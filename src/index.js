@@ -2,6 +2,8 @@
 
 import { Command } from 'commander';
 import chalk from 'chalk';
+import { ensureApiKey } from './setup.js';
+import { getConfigPath } from './config.js';
 
 const VERSION = '1.0.0';
 
@@ -27,7 +29,8 @@ program.action(() => {
 program
   .command('i')
   .description('Initialize a new Git repo and push')
-  .action(() => {
+  .action(async () => {
+    await ensureApiKey();
     console.log('');
     console.log(chalk.cyan.bold('  🐙 tako init'));
     console.log('');
@@ -38,7 +41,8 @@ program
 program
   .command('p')
   .description('Add, commit with LLM message, and push')
-  .action(() => {
+  .action(async () => {
+    await ensureApiKey();
     console.log('');
     console.log(chalk.cyan.bold('  🐙 tako push'));
     console.log('');
