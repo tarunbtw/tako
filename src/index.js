@@ -9,19 +9,41 @@ const program = new Command();
 
 program
   .name('tako')
-  .description('Smart Git workflow CLI with AI-powered commit messages')
+  .description('Smart Git workflow CLI with LLM-powered commit messages')
   .version(VERSION);
 
 program.action(() => {
   console.log('');
   console.log(chalk.cyan.bold('  🐙 tako') + chalk.gray(` v${VERSION}`));
-  console.log(chalk.gray('  Smart Git workflow with AI commit messages'));
+  console.log(chalk.gray('  Smart Git workflow with LLM-powered commit messages'));
   console.log('');
   console.log(chalk.white.bold('  Commands:'));
   console.log('');
   console.log(`  ${chalk.cyan('tako i')}   Initialize a new Git repo and push`);
-  console.log(`  ${chalk.cyan('tako p')}   Add → AI commit → Push`);
+  console.log(`  ${chalk.cyan('tako p')}   Add → LLM commit → Push`);
   console.log('');
 });
+
+program
+  .command('i')
+  .description('Initialize a new Git repo and push')
+  .action(() => {
+    console.log('');
+    console.log(chalk.cyan.bold('  🐙 tako init'));
+    console.log('');
+    console.log(chalk.gray('  (not implemented yet)'));
+    console.log('');
+  });
+
+program
+  .command('p')
+  .description('Add, commit with LLM message, and push')
+  .action(() => {
+    console.log('');
+    console.log(chalk.cyan.bold('  🐙 tako push'));
+    console.log('');
+    console.log(chalk.gray('  (not implemented yet)'));
+    console.log('');
+  });
 
 program.parse();
