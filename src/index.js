@@ -6,7 +6,7 @@ import chalk from "chalk";
 import inquirer from "inquirer";
 import { ensureApiKey } from "./setup.js";
 import { getConfigPath } from "./config.js";
-import { isGitRepo, getRemoteUrl, hasGitignore, gitInit, gitAdd, gitCommit, gitBranch } from './git.js';
+import { isGitRepo, getRemoteUrl, hasGitignore, gitInit, gitAdd, gitCommit, gitBranch, gitRemoteAdd } from './git.js';
 import { createDefaultGitignore } from "./gitignore.js";
 
 const VERSION = "1.0.0";
@@ -134,7 +134,65 @@ program
       console.log('');
     }
 
-    console.log(chalk.gray('  (rest of init not implemented yet)'));
+    const { remoteInput } = await inquirer.prompt([{
+      type: 'input',
+      name: 'remoteInput',
+      message: 'Enter your GitHub remote URL (blank to skip):',
+      validate: (input) => {
+        if (!input.trim()) return true;
+        const valid = input.trim().startsWith('https://github.com') ||
+                      input.trim().startsWith('git@github.com');
+        return valid || 'Please enter a valid GitHub URL';
+      },
+    }]);
+
+    if (!remoteInput.trim()) {
+      console.log('');
+      console.log(chalk.yellow('  ⚠ No remote set. Skipping push.'));
+      console.log(chalk.gray('  You can add one later: git remote add origin <url>'));
+      console.log('');
+      console.log(chalk.green.bold('  ✓ Repo initialised locally!'));
+      console.log('');
+      return;
+    }
+
+    {
+      const spinner = ora('Adding remote origin...').start();
+      try {
+        await gitRemoteAdd(remoteInput.trim());
+        spinner.succeed(`Remote added: ${chalk.gray(remoteInput.trim())}`);
+      } catch (err) {
+        spinner.fail('Failed to add remote.');
+        console.log(chalk.red(`  ${err.message}`));
+        process.exit(1);
+      }
+      console.log('');
+    }
+
+    if (!remoteUrl.trim()) {
+      console.log('');
+      console.log(chalk.yellow('  ⚠ No remote set. Skipping push.'));
+      console.log(chalk.gray('  You can add one later: git remote add origin <url>'));
+      console.log('');
+      console.log(chalk.green.bold('  ✓ Repo initialised locally!'));
+      console.log('');
+      return;
+    }
+
+    {
+      const spinner = ora('Adding remote origin...').start();
+      try {
+        await gitRemoteAdd(remoteUrl.trim());
+        spinner.succeed(`Remote added: ${chalk.gray(remoteUrl.trim())}`);
+      } catch (err) {
+        spinner.fail('Failed to add remote.');
+        console.log(chalk.red(`  ${err.message}`));
+        process.exit(1);
+      }
+      console.log('');
+    }
+
+    console.log(chalk.gray('  (push not implemented yet)'));
     console.log('');
   });
 

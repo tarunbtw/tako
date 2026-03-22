@@ -66,3 +66,7 @@ export async function gitCommit(message) {
 export async function gitBranch(name) {
   await execa('git', ['branch', '-M', name]);
 }
+
+export async function gitRemoteAdd(url) {
+  await execa('git', ['remote', 'add', 'origin', url]);
+}
