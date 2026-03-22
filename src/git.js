@@ -58,3 +58,11 @@ export async function gitInit() {
 export async function gitAdd(target = '.') {
   await execa('git', ['add', target]);
 }
+
+export async function gitCommit(message) {
+  await execa('git', ['commit', '-m', message]);
+}
+
+export async function gitBranch(name) {
+  await execa('git', ['branch', '-M', name]);
+}

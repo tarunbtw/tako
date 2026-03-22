@@ -6,13 +6,7 @@ import chalk from "chalk";
 import inquirer from "inquirer";
 import { ensureApiKey } from "./setup.js";
 import { getConfigPath } from "./config.js";
-import {
-  isGitRepo,
-  getRemoteUrl,
-  hasGitignore,
-  gitInit,
-  gitAdd,
-} from "./git.js";
+import { isGitRepo, getRemoteUrl, hasGitignore, gitInit, gitAdd, gitCommit, gitBranch } from './git.js';
 import { createDefaultGitignore } from "./gitignore.js";
 
 const VERSION = "1.0.0";
@@ -102,8 +96,46 @@ program
       console.log("");
     }
 
-    console.log(chalk.gray("  (rest of init not implemented yet)"));
-    console.log("");
+    {
+      const spinner = ora('Staging all files...').start();
+      try {
+        await gitAdd('.');
+        spinner.succeed('All files staged.');
+      } catch (err) {
+        spinner.fail('git add failed.');
+        console.log(chalk.red(`  ${err.message}`));
+        process.exit(1);
+      }
+      console.log('');
+    }
+
+    {
+      const spinner = ora('Creating initial commit...').start();
+      try {
+        await gitCommit('init: project initialised using tako');
+        spinner.succeed('Initial commit created.');
+      } catch (err) {
+        spinner.fail('git commit failed.');
+        console.log(chalk.red(`  ${err.message}`));
+        process.exit(1);
+      }
+      console.log('');
+    }
+
+    {
+      const spinner = ora('Setting branch to main...').start();
+      try {
+        await gitBranch('main');
+        spinner.succeed('Branch set to main.');
+      } catch (err) {
+        spinner.fail('Could not rename branch.');
+        console.log(chalk.red(`  ${err.message}`));
+      }
+      console.log('');
+    }
+
+    console.log(chalk.gray('  (rest of init not implemented yet)'));
+    console.log('');
   });
 
 program
