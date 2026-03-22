@@ -50,3 +50,11 @@ export async function hasUncommittedChanges() {
     return false;
   }
 }
+
+export async function gitInit() {
+  await execa('git', ['init']);
+}
+
+export async function gitAdd(target = '.') {
+  await execa('git', ['add', target]);
+}

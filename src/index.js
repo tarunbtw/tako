@@ -1,10 +1,19 @@
 #!/usr/bin/env node
 
 import { Command } from "commander";
+import ora from 'ora';
 import chalk from "chalk";
+import inquirer from "inquirer";
 import { ensureApiKey } from "./setup.js";
 import { getConfigPath } from "./config.js";
-import { isGitRepo, getRemoteUrl, hasGitignore } from './git.js';
+import {
+  isGitRepo,
+  getRemoteUrl,
+  hasGitignore,
+  gitInit,
+  gitAdd,
+} from "./git.js";
+import { createDefaultGitignore } from "./gitignore.js";
 
 const VERSION = "1.0.0";
 
@@ -53,12 +62,43 @@ program
     const gitignoreExists = await hasGitignore();
     if (!gitignoreExists) {
       console.log(chalk.yellow("  ⚠ No .gitignore found!"));
-      console.log(
-        chalk.gray("  Make sure you add one before committing secrets."),
-      );
+      console.log("");
+      const { create } = await inquirer.prompt([
+        {
+          type: "confirm",
+          name: "create",
+          message: "Create a default .gitignore?",
+          default: true,
+        },
+      ]);
+
+      if (create) {
+        createDefaultGitignore();
+        console.log(chalk.green("  ✓ .gitignore created."));
+      } else {
+        console.log(
+          chalk.yellow("  ⚠ Skipping — be careful not to commit secrets!"),
+        );
+      }
       console.log("");
     } else {
       console.log(chalk.green("  ✓ .gitignore found."));
+      console.log("");
+    }
+
+    if (alreadyRepo) {
+      console.log(chalk.green("  ✓ Git repo already exists, skipping init."));
+      console.log("");
+    } else {
+      const spinner = ora("Running git init...").start();
+      try {
+        await gitInit();
+        spinner.succeed("Git repo initialised.");
+      } catch (err) {
+        spinner.fail("git init failed.");
+        console.log(chalk.red(`  ${err.message}`));
+        process.exit(1);
+      }
       console.log("");
     }
 
