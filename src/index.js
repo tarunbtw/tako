@@ -6,7 +6,7 @@ import chalk from "chalk";
 import inquirer from "inquirer";
 import { ensureApiKey } from "./setup.js";
 import { getConfigPath } from "./config.js";
-import { isGitRepo, getRemoteUrl, hasGitignore, gitInit, gitAdd, gitCommit, gitBranch, gitRemoteAdd } from './git.js';
+import { isGitRepo, getRemoteUrl, hasGitignore, gitInit, gitAdd, gitCommit, gitBranch, gitRemoteAdd, gitPush } from './git.js';
 import { createDefaultGitignore } from "./gitignore.js";
 
 const VERSION = "1.0.0";
@@ -21,9 +21,7 @@ program
 program.action(() => {
   console.log("");
   console.log(chalk.cyan.bold("  🐙 tako") + chalk.gray(` v${VERSION}`));
-  console.log(
-    chalk.gray("  Smart Git workflow with LLM-powered commit messages"),
-  );
+  console.log(chalk.gray("  Smart Git workflow with LLM-powered commit messages"));
   console.log("");
   console.log(chalk.white.bold("  Commands:"));
   console.log("");
@@ -42,11 +40,11 @@ program
     console.log("");
 
     const alreadyRepo = await isGitRepo();
-    const remoteUrl = await getRemoteUrl();
+    const existingRemoteUrl = await getRemoteUrl();
 
-    if (alreadyRepo && remoteUrl) {
-      console.log(chalk.yellow("  ⚠ Already a git repo with remote set:"));
-      console.log(chalk.gray(`    ${remoteUrl}`));
+    if (alreadyRepo && existingRemoteUrl) {
+      console.log(chalk.yellow('  ⚠ Already a git repo with remote set:'));
+      console.log(chalk.gray(`    ${existingRemoteUrl}`));
       console.log("");
       console.log(chalk.gray("  Use tako p to push your changes."));
       console.log("");
@@ -57,22 +55,18 @@ program
     if (!gitignoreExists) {
       console.log(chalk.yellow("  ⚠ No .gitignore found!"));
       console.log("");
-      const { create } = await inquirer.prompt([
-        {
-          type: "confirm",
-          name: "create",
-          message: "Create a default .gitignore?",
-          default: true,
-        },
-      ]);
+      const { create } = await inquirer.prompt([{
+        type: "confirm",
+        name: "create",
+        message: "Create a default .gitignore?",
+        default: true,
+      }]);
 
       if (create) {
         createDefaultGitignore();
         console.log(chalk.green("  ✓ .gitignore created."));
       } else {
-        console.log(
-          chalk.yellow("  ⚠ Skipping — be careful not to commit secrets!"),
-        );
+        console.log(chalk.yellow("  ⚠ Skipping — be careful not to commit secrets!"));
       }
       console.log("");
     } else {
@@ -169,30 +163,23 @@ program
       console.log('');
     }
 
-    if (!remoteUrl.trim()) {
-      console.log('');
-      console.log(chalk.yellow('  ⚠ No remote set. Skipping push.'));
-      console.log(chalk.gray('  You can add one later: git remote add origin <url>'));
-      console.log('');
-      console.log(chalk.green.bold('  ✓ Repo initialised locally!'));
-      console.log('');
-      return;
-    }
-
     {
-      const spinner = ora('Adding remote origin...').start();
+      const spinner = ora('Pushing to GitHub...').start();
       try {
-        await gitRemoteAdd(remoteUrl.trim());
-        spinner.succeed(`Remote added: ${chalk.gray(remoteUrl.trim())}`);
+        await gitPush('main');
+        spinner.succeed('Pushed to GitHub! 🚀');
       } catch (err) {
-        spinner.fail('Failed to add remote.');
-        console.log(chalk.red(`  ${err.message}`));
+        spinner.fail('Push failed.');
+        console.log(chalk.red(`  ${err.stderr || err.message}`));
+        console.log('');
+        console.log(chalk.gray('  Tip: make sure the remote repo exists on GitHub.'));
         process.exit(1);
       }
       console.log('');
     }
 
-    console.log(chalk.gray('  (push not implemented yet)'));
+    console.log('');
+    console.log(chalk.green.bold('  ✓ All done! Your repo is live on GitHub 🎉'));
     console.log('');
   });
 

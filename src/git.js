@@ -70,3 +70,7 @@ export async function gitBranch(name) {
 export async function gitRemoteAdd(url) {
   await execa('git', ['remote', 'add', 'origin', url]);
 }
+
+export async function gitPush(branch = 'main') {
+  await execa('git', ['push', '-u', 'origin', branch]);
+}
