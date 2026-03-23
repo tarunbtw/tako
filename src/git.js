@@ -84,12 +84,3 @@ export async function getStagedDiff() {
     return { stat: '', diff: '' };
   }
 }
-
-export async function hasUncommittedChanges() {
-  try {
-    const { stdout } = await execa('git', ['status', '--porcelain']);
-    return stdout.trim().length > 0;
-  } catch {
-    return false;
-  }
-}

@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 import { getApiKey } from './config.js';
 
 export async function generateCommitMessage(stat, diff) {
@@ -7,10 +7,8 @@ export async function generateCommitMessage(stat, diff) {
     throw new Error('No API key found. Run tako to set up.');
   }
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const client = new Groq({ apiKey });
 
-  // Truncate diff if too large
   const maxLength = 8000;
   const truncatedDiff = diff.length > maxLength
     ? diff.substring(0, maxLength) + '\n... (diff truncated)'
@@ -35,9 +33,12 @@ ${truncatedDiff}
 
 Reply with ONLY the commit message, nothing else.`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text().trim();
+  const response = await client.chat.completions.create({
+    model: 'llama-3.1-8b-instant',
+    max_tokens: 100,
+    messages: [{ role: 'user', content: prompt }],
+  });
 
-  // Strip any accidental quotes or backticks
+  const text = response.choices[0]?.message?.content?.trim() ?? '';
   return text.replace(/^["'`]|["'`]$/g, '');
 }

@@ -4,9 +4,10 @@ import { Command } from "commander";
 import ora from 'ora';
 import chalk from "chalk";
 import inquirer from "inquirer";
+import { generateCommitMessage } from './llm.js';
 import { ensureApiKey } from "./setup.js";
 import { getConfigPath } from "./config.js";
-import { isGitRepo, getRemoteUrl, hasGitignore, gitInit, gitAdd, gitCommit, gitBranch, gitRemoteAdd, gitPush } from './git.js';
+import { isGitRepo, getRemoteUrl, hasGitignore, gitInit, gitAdd, gitCommit, gitBranch, gitRemoteAdd, gitPush, getStagedDiff, hasUncommittedChanges, hasRemote } from './git.js';
 import { createDefaultGitignore } from "./gitignore.js";
 
 const VERSION = "1.0.0";
@@ -191,8 +192,142 @@ program
     console.log("");
     console.log(chalk.cyan.bold("  🐙 tako push"));
     console.log("");
-    console.log(chalk.gray("  (not implemented yet)"));
-    console.log("");
+
+    //checks
+    if (!await isGitRepo()) {
+      console.log(chalk.red('  ✗ Not a git repo. Run tako i first.'));
+      console.log('');
+      process.exit(1);
+    }
+
+    if (!await hasRemote()) {
+      console.log(chalk.red('  ✗ No remote set. Run tako i first.'));
+      console.log('');
+      process.exit(1);
+    }
+
+    if (!await hasGitignore()) {
+      console.log(chalk.yellow('  ⚠ No .gitignore found!'));
+      const { proceed } = await inquirer.prompt([{
+        type: 'confirm',
+        name: 'proceed',
+        message: 'Continue anyway?',
+        default: false,
+      }]);
+      if (!proceed) {
+        console.log('');
+        console.log(chalk.gray('  Aborted.'));
+        console.log('');
+        process.exit(0);
+      }
+      console.log('');
+    }
+
+    if (!await hasUncommittedChanges()) {
+      console.log(chalk.yellow('  ⚠ Nothing to commit — working tree is clean.'));
+      console.log('');
+      process.exit(0);
+    }
+
+    //git add .
+    {
+      const spinner = ora('Staging all changes...').start();
+      try {
+        await gitAdd('.');
+        spinner.succeed('All changes staged.');
+      } catch (err) {
+        spinner.fail('git add failed.');
+        console.log(chalk.red(`  ${err.message}`));
+        process.exit(1);
+      }
+      console.log('');
+    }
+
+    //generate commit message
+    let commitMsg;
+    {
+      const spinner = ora('Generating commit message...').start();
+      try {
+        const { stat, diff } = await getStagedDiff();
+        commitMsg = await generateCommitMessage(stat, diff);
+        spinner.succeed(`Message: ${chalk.cyan('"' + commitMsg + '"')}`);
+      } catch (err) {
+        spinner.fail('LLM generation failed.');
+        console.log(chalk.red(`  ${err.message}`));
+        console.log('');
+        const { fallback } = await inquirer.prompt([{
+          type: 'input',
+          name: 'fallback',
+          message: 'Enter commit message manually:',
+          validate: (input) => input.trim().length > 0 || 'Cannot be empty',
+        }]);
+        commitMsg = fallback.trim();
+      }
+      console.log('');
+    }
+
+    //confirm message
+    const { action } = await inquirer.prompt([{
+      type: 'list',
+      name: 'action',
+      message: 'Use this commit message?',
+      choices: [
+        { name: `Yes, use it`, value: 'yes' },
+        { name: `Edit it`, value: 'edit' },
+        { name: `Abort`, value: 'abort' },
+      ],
+    }]);
+
+    if (action === 'abort') {
+      console.log('');
+      console.log(chalk.gray('  Aborted. Files are staged — commit manually if you like.'));
+      console.log('');
+      process.exit(0);
+    }
+
+    if (action === 'edit') {
+      const { edited } = await inquirer.prompt([{
+        type: 'input',
+        name: 'edited',
+        message: 'Edit message:',
+        default: commitMsg,
+        validate: (input) => input.trim().length > 0 || 'Cannot be empty',
+      }]);
+      commitMsg = edited.trim();
+    }
+
+    console.log('');
+
+    // git commit
+    {
+      const spinner = ora('Committing...').start();
+      try {
+        await gitCommit(commitMsg);
+        spinner.succeed('Committed.');
+      } catch (err) {
+        spinner.fail('git commit failed.');
+        console.log(chalk.red(`  ${err.stderr || err.message}`));
+        process.exit(1);
+      }
+      console.log('');
+    }
+
+    //git push
+    {
+      const spinner = ora('Pushing...').start();
+      try {
+        await gitPush('main');
+        spinner.succeed('Pushed! 🚀');
+      } catch (err) {
+        spinner.fail('Push failed.');
+        console.log(chalk.red(`  ${err.stderr || err.message}`));
+        process.exit(1);
+      }
+      console.log('');
+    }
+
+    console.log(chalk.green.bold('  ✓ Done! Changes are live 🎉'));
+    console.log('');
   });
 
 program.parse();
