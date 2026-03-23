@@ -74,3 +74,22 @@ export async function gitRemoteAdd(url) {
 export async function gitPush(branch = 'main') {
   await execa('git', ['push', '-u', 'origin', branch]);
 }
+
+export async function getStagedDiff() {
+  try {
+    const { stdout: stat } = await execa('git', ['diff', '--cached', '--stat']);
+    const { stdout: diff } = await execa('git', ['diff', '--cached', '--unified=3']);
+    return { stat: stat.trim(), diff: diff.trim() };
+  } catch {
+    return { stat: '', diff: '' };
+  }
+}
+
+export async function hasUncommittedChanges() {
+  try {
+    const { stdout } = await execa('git', ['status', '--porcelain']);
+    return stdout.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
