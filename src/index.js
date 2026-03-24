@@ -20,6 +20,8 @@ import {
   getStagedDiff,
   hasUncommittedChanges,
   hasRemote,
+  getCurrentBranch,
+  gitPullRebase,
 } from "./git.js";
 import { createDefaultGitignore } from "./gitignore.js";
 
@@ -42,7 +44,7 @@ program.action(() => {
   console.log(chalk.white.bold("  Commands:"));
   console.log("");
   console.log(`  ${chalk.cyan("tako i")}   Initialize a new Git repo and push`);
-  console.log(`  ${chalk.cyan("tako p")}   Add → LLM commit → Push`);
+  console.log(`  ${chalk.cyan("tako p")}   Push with auto commit messge`);
   console.log("");
 });
 
@@ -206,9 +208,7 @@ program
     }
 
     console.log("");
-    console.log(
-      chalk.green.bold("  ✓ All done! Your repo is live on GitHub 🎉"),
-    );
+    console.log(chalk.green.bold("  ✓ All done!"));
     console.log("");
   });
 
@@ -411,14 +411,31 @@ program
 
     //git push
     {
-      const spinner = ora("Pushing...").start();
+      const branch = await getCurrentBranch();
+      const spinner = ora(`Pushing to origin/${branch}...`).start();
       try {
-        await gitPush("main");
-        spinner.succeed("Pushed! 🚀");
-      } catch (err) {
-        spinner.fail("Push failed.");
-        console.log(chalk.red(`  ${err.stderr || err.message}`));
-        process.exit(1);
+        await gitPush(branch);
+        spinner.succeed(`Pushed to origin/${branch}! 🚀`);
+      } catch {
+        // push failed — try rebase
+        spinner.text = "Out of sync, pulling with rebase...";
+        try {
+          await gitPullRebase();
+          spinner.text = `Retrying push to origin/${branch}...`;
+          await gitPush(branch);
+          spinner.succeed(`Pushed to origin/${branch}! 🚀`);
+        } catch (err) {
+          spinner.fail("Push failed even after rebase.");
+          console.log(chalk.red(`  ${err.stderr || err.message}`));
+          console.log("");
+          console.log(
+            chalk.yellow(
+              "  There may be a merge conflict that needs manual fixing.",
+            ),
+          );
+          console.log("");
+          process.exit(1);
+        }
       }
       console.log("");
     }

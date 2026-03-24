@@ -84,3 +84,7 @@ export async function getStagedDiff() {
     return { stat: '', diff: '' };
   }
 }
+
+export async function gitPullRebase() {
+  await execa('git', ['pull', '--rebase', 'origin', (await execa('git', ['branch', '--show-current'])).stdout.trim()]);
+}
