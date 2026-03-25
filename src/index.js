@@ -44,7 +44,7 @@ program.action(() => {
   console.log(chalk.white.bold("  Commands:"));
   console.log("");
   console.log(`  ${chalk.cyan("tako i")}   Initialize a new Git repo and push`);
-  console.log(`  ${chalk.cyan("tako p")}   Push with auto commit messge`);
+  console.log(`  ${chalk.cyan("tako p")}   Push with auto commit message`);
   console.log("");
 });
 
