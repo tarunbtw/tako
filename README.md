@@ -4,7 +4,7 @@ Minimal Git workflow CLI with LLM-generated commit messages.
 
 ## Install
 ```bash
-npm install -g @tarunbtw/tako
+npm install  @tarunbtw/tako
 ```
 
 ## Setup
