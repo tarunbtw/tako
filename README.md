@@ -1,6 +1,6 @@
 # 🐙 tako
 
-Minimal Git workflow CLI with LLM-generated commit messages.
+Minimal Git workflow CLI with auto-generated commit messages.
 
 ## Install
 ```bash
