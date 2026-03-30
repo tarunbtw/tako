@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import fs from "fs";
+import path from "path";
 
 const DEFAULT_GITIGNORE = `# Dependencies
 node_modules/
@@ -33,5 +33,5 @@ logs/
 `;
 
 export function createDefaultGitignore() {
-  fs.writeFileSync(path.join(process.cwd(), '.gitignore'), DEFAULT_GITIGNORE);
+  fs.writeFileSync(path.join(process.cwd(), ".gitignore"), DEFAULT_GITIGNORE);
 }
