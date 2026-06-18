@@ -25,7 +25,8 @@ import {
 } from "./git.js";
 import { createDefaultGitignore } from "./gitignore.js";
 
-const VERSION = "1.0.0";
+import { createRequire } from "module";
+const { version: VERSION } = createRequire(import.meta.url)("../package.json");
 
 const program = new Command();
 
@@ -43,8 +44,9 @@ program.action(() => {
   console.log("");
   console.log(chalk.white.bold("  Commands:"));
   console.log("");
-  console.log(`  ${chalk.cyan("tako i")}   Initialize a new Git repo and push`);
-  console.log(`  ${chalk.cyan("tako p")}   Push with auto commit message`);
+  console.log(`  ${chalk.cyan("tako i")}       Initialize a new Git repo and push`);
+  console.log(`  ${chalk.cyan("tako p")}       Push with auto commit message`);
+  console.log(`  ${chalk.cyan("tako config")}  Manage your Groq API key`);
   console.log("");
 });
 
@@ -103,7 +105,7 @@ program
       const spinner = ora("Running git init...").start();
       try {
         await gitInit();
-        spinner.succeed("Git repo initialised.");
+        spinner.succeed("Git repo initialized.");
       } catch (err) {
         spinner.fail("git init failed.");
         console.log(chalk.red(`  ${err.message}`));
@@ -128,7 +130,7 @@ program
     {
       const spinner = ora("Creating initial commit...").start();
       try {
-        await gitCommit("init: project initialised using tako");
+        await gitCommit("init: project initialized using tako");
         spinner.succeed("Initial commit created.");
       } catch (err) {
         spinner.fail("git commit failed.");
@@ -154,13 +156,13 @@ program
       {
         type: "input",
         name: "remoteInput",
-        message: "Enter your GitHub remote URL (blank to skip):",
+        message: "Enter your Git remote URL (blank to skip):",
         validate: (input) => {
           if (!input.trim()) return true;
           const valid =
-            input.trim().startsWith("https://github.com") ||
-            input.trim().startsWith("git@github.com");
-          return valid || "Please enter a valid GitHub URL";
+            input.trim().startsWith("https://") ||
+            input.trim().startsWith("git@");
+          return valid || "Please enter a valid remote URL (https:// or git@...)";
         },
       },
     ]);
@@ -172,7 +174,7 @@ program
         chalk.gray("  You can add one later: git remote add origin <url>"),
       );
       console.log("");
-      console.log(chalk.green.bold("  ✓ Repo initialised locally!"));
+      console.log(chalk.green.bold("  ✓ Repo initialized locally!"));
       console.log("");
       return;
     }
@@ -191,16 +193,16 @@ program
     }
 
     {
-      const spinner = ora("Pushing to GitHub...").start();
+      const spinner = ora("Pushing to remote...").start();
       try {
         await gitPush("main");
-        spinner.succeed("Pushed to GitHub! 🚀");
+        spinner.succeed("Pushed! 🚀");
       } catch (err) {
         spinner.fail("Push failed.");
         console.log(chalk.red(`  ${err.stderr || err.message}`));
         console.log("");
         console.log(
-          chalk.gray("  Tip: make sure the remote repo exists on GitHub."),
+          chalk.gray("  Tip: make sure the remote repo exists and you have access."),
         );
         process.exit(1);
       }
