@@ -2,5 +2,4 @@ node_modules/
 .git/
 temp/
 *.log
-context.md
-fix.md
+.takorc

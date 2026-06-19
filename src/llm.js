@@ -43,3 +43,36 @@ Reply with ONLY the commit message, nothing else.`;
   const text = response.choices[0]?.message?.content?.trim() ?? "";
   return text.replace(/^["'`]|["'`]$/g, "");
 }
+
+export async function generatePRDescription(branchName, commits) {
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("No API key found. Run tako to set up.");
+
+  const client = new Groq({ apiKey });
+
+  const commitList = commits.length
+    ? commits.map((c) => `- ${c}`).join("\n")
+    : "- (no commits found)";
+
+  const prompt = `You are a developer writing a pull request description.
+Branch: ${branchName}
+Commits:
+${commitList}
+
+Write a concise PR description:
+- First line: one-sentence summary of what this branch does
+- Then 2-4 bullet points of what changed
+- Max 120 words total
+- No markdown headers, no "This PR", no fluff
+- Plain text only
+
+Reply with ONLY the description.`;
+
+  const response = await client.chat.completions.create({
+    model: "llama-3.1-8b-instant",
+    max_tokens: 300,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  return response.choices[0]?.message?.content?.trim() ?? "";
+}

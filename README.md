@@ -23,6 +23,10 @@ tako will ask for it on first run and store it locally.
 | `tako i` | Initialize a new git repo and push to remote |
 | `tako p` | Stage, commit with AI message, and push |
 | `tako config` | View or update your stored Groq API key |
+| `tako b` | Create, switch, or delete branches |
+| `tako undo` | Safely undo the last commit |
+| `tako sync` | Fetch and rebase from origin |
+| `tako pr` | Open a pull request from the terminal |
 
 ## What it looks like
 
@@ -39,6 +43,24 @@ $ tako p
   ✔ Pushed to origin/main! 🚀
 
   ✓ Done! Changes are live 🎉
+```
+
+## Open a PR without leaving the terminal
+
+```
+$ tako pr
+
+  🐙 tako pr
+
+  Branch:  feature/auth-refresh → main
+
+  ✔ Description ready.
+
+  Title:       Add JWT refresh token rotation with sliding expiry
+  Description: Implements sliding expiry for refresh tokens. Adds rotation
+               logic on each token use.
+
+  ? What do you want to do? › Open in browser
 ```
 
 ## How it works

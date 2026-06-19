@@ -1,3 +1,448 @@
+# Repository Context: tako
+
+This document contains the project structure and contents of all codebase files for the `tako` project.
+
+## File and Folder Structure
+
+```
+tako/
+├── .gitignore
+├── .npmignore
+├── README.md
+├── package.json
+└── src/
+    ├── config.js
+    ├── git.js
+    ├── gitignore.js
+    ├── index.js
+    ├── llm.js
+    ├── setup.js
+    └── takorc.js
+```
+
+---
+
+## File Contents
+
+### `.gitignore`
+Path: `.gitignore`
+
+```text
+/node_modules
+```
+
+---
+
+### `.npmignore`
+Path: `.npmignore`
+
+```text
+node_modules/
+.git/
+temp/
+*.log
+.takorc
+```
+
+---
+
+### `package.json`
+Path: `package.json`
+
+```json
+{
+  "name": "@tarunbtw/tako",
+  "version": "1.1.0",
+  "description": "Minimal Git workflow CLI with LLM-generated commit messages",
+  "type": "module",
+  "bin": {
+    "tako": "./src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "keywords": ["git", "cli", "llm", "ai", "commit", "groq", "automation", "developer-tools"],
+  "author": "tarunbtw",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tarunbtw/tako"
+  },
+  "homepage": "https://github.com/tarunbtw/tako#readme",
+  "bugs": {
+    "url": "https://github.com/tarunbtw/tako/issues"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.0.0",
+    "conf": "^13.0.0",
+    "execa": "^9.0.0",
+    "groq-sdk": "^0.9.0",
+    "inquirer": "^9.2.0",
+    "ora": "^8.0.0"
+  }
+}
+```
+
+---
+
+### `README.md`
+Path: `README.md`
+
+```markdown
+# 🐙 tako
+
+[![npm](https://img.shields.io/npm/v/@tarunbtw/tako)](https://www.npmjs.com/package/@tarunbtw/tako)
+[![license](https://img.shields.io/npm/l/@tarunbtw/tako)](LICENSE)
+
+Stop writing commit messages. tako stages, commits, and pushes — the message is written by AI in under a second.
+
+## Install
+
+```bash
+npm install -g @tarunbtw/tako
+```
+
+## Setup
+
+Grab a free Groq API key at [console.groq.com](https://console.groq.com).  
+tako will ask for it on first run and store it locally.
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `tako i` | Initialize a new git repo and push to remote |
+| `tako p` | Stage, commit with AI message, and push |
+| `tako config` | View or update your stored Groq API key |
+| `tako b` | Create, switch, or delete branches |
+| `tako undo` | Safely undo the last commit |
+| `tako sync` | Fetch and rebase from origin |
+| `tako pr` | Open a pull request from the terminal |
+
+## What it looks like
+
+```
+$ tako p
+
+  🐙 tako push
+
+  ✔ All changes staged.
+  ✔ Message: "Add JWT refresh token rotation with sliding expiry"
+
+  ? Use this commit message? › Yes, use it
+  ✔ Committed.
+  ✔ Pushed to origin/main! 🚀
+
+  ✓ Done! Changes are live 🎉
+```
+
+## Open a PR without leaving the terminal
+
+```
+$ tako pr
+
+  🐙 tako pr
+
+  Branch:  feature/auth-refresh → main
+
+  ✔ Description ready.
+
+  Title:       Add JWT refresh token rotation with sliding expiry
+  Description: Implements sliding expiry for refresh tokens. Adds rotation
+               logic on each token use.
+
+  ? What do you want to do? › Open in browser
+```
+
+## How it works
+
+tako sends your `git diff` to **Llama 3.1 8B** via [Groq](https://console.groq.com) — one of the fastest inference APIs available. Commit messages generate in under a second.
+
+## License
+
+MIT
+```
+
+---
+
+### `src/config.js`
+Path: `src/config.js`
+
+```javascript
+import Conf from "conf";
+
+const config = new Conf({
+  projectName: "tako",
+  schema: {
+    groqApiKey: {
+      type: "string",
+      default: "",
+    },
+  },
+});
+
+// One-time migration: if old geminiApiKey exists, move it over
+const legacy = config.store["geminiApiKey"];
+if (legacy && !config.get("groqApiKey")) {
+  config.set("groqApiKey", legacy);
+  delete config.store["geminiApiKey"];
+}
+
+export function getApiKey() {
+  return config.get("groqApiKey");
+}
+
+export function setApiKey(key) {
+  config.set("groqApiKey", key);
+}
+
+export function hasApiKey() {
+  const key = config.get("groqApiKey");
+  return typeof key === "string" && key.trim().length > 0;
+}
+
+export function getConfigPath() {
+  return config.path;
+}
+```
+
+---
+
+### `src/git.js`
+Path: `src/git.js`
+
+```javascript
+import { execa } from "execa";
+import fs from "fs";
+import path from "path";
+
+export async function isGitRepo() {
+  try {
+    await execa("git", ["rev-parse", "--git-dir"]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function hasRemote() {
+  try {
+    const { stdout } = await execa("git", ["remote"]);
+    return stdout.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
+
+export async function getRemoteUrl() {
+  try {
+    const { stdout } = await execa("git", ["remote", "get-url", "origin"]);
+    return stdout.trim();
+  } catch {
+    return null;
+  }
+}
+
+export async function getCurrentBranch() {
+  try {
+    const { stdout } = await execa("git", ["branch", "--show-current"]);
+    return stdout.trim();
+  } catch {
+    return null;
+  }
+}
+
+export async function hasGitignore() {
+  return fs.existsSync(path.join(process.cwd(), ".gitignore"));
+}
+
+export async function hasUncommittedChanges() {
+  try {
+    const { stdout } = await execa("git", ["status", "--porcelain"]);
+    return stdout.trim().length > 0;
+  } catch {
+    return false;
+  }
+}
+
+export async function gitInit() {
+  await execa("git", ["init"]);
+}
+
+export async function gitAdd(target = ".") {
+  await execa("git", ["add", target]);
+}
+
+export async function gitCommit(message) {
+  await execa("git", ["commit", "-m", message]);
+}
+
+export async function gitBranch(name) {
+  await execa("git", ["branch", "-M", name]);
+}
+
+export async function gitRemoteAdd(url) {
+  await execa("git", ["remote", "add", "origin", url]);
+}
+
+export async function gitPush(branch = "main") {
+  await execa("git", ["push", "-u", "origin", branch]);
+}
+
+export async function getStagedDiff() {
+  try {
+    const { stdout: stat } = await execa("git", ["diff", "--cached", "--stat"]);
+    const { stdout: diff } = await execa("git", [
+      "diff",
+      "--cached",
+      "--unified=3",
+    ]);
+    return { stat: stat.trim(), diff: diff.trim() };
+  } catch {
+    return { stat: "", diff: "" };
+  }
+}
+
+export async function gitPullRebase() {
+  const { stdout } = await execa("git", ["branch", "--show-current"]);
+  const branch = stdout.trim();
+  await execa("git", ["pull", "--rebase", "origin", branch]);
+}
+
+export async function getLastCommit() {
+  try {
+    const { stdout } = await execa("git", ["log", "-1", "--format=%s|%cr"]);
+    const parts = stdout.trim().split("|");
+    return { message: parts[0], time: parts[1] };
+  } catch {
+    return null;
+  }
+}
+
+export async function gitResetSoft() {
+  await execa("git", ["reset", "--soft", "HEAD~1"]);
+}
+
+export async function gitResetMixed() {
+  await execa("git", ["reset", "HEAD~1"]);
+}
+
+export async function gitFetch() {
+  await execa("git", ["fetch", "origin"]);
+}
+
+export async function getAheadBehind(branch) {
+  try {
+    const { stdout } = await execa("git", [
+      "rev-list",
+      "--left-right",
+      "--count",
+      `origin/${branch}...${branch}`,
+    ]);
+    const [behind, ahead] = stdout.trim().split("\t").map(Number);
+    return { ahead: ahead || 0, behind: behind || 0 };
+  } catch {
+    return { ahead: 0, behind: 0 };
+  }
+}
+
+export async function getLocalBranches() {
+  try {
+    const { stdout } = await execa("git", [
+      "branch",
+      "--format=%(refname:short)",
+    ]);
+    return stdout.trim().split("\n").filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+export async function createAndSwitchBranch(name) {
+  await execa("git", ["checkout", "-b", name]);
+}
+
+export async function switchBranch(name) {
+  await execa("git", ["checkout", name]);
+}
+
+export async function deleteBranch(name) {
+  await execa("git", ["branch", "-d", name]);
+}
+
+export async function forceDeleteBranch(name) {
+  await execa("git", ["branch", "-D", name]);
+}
+
+export async function getBranchCommits(base = "main") {
+  try {
+    const { stdout } = await execa("git", [
+      "log",
+      `${base}..HEAD`,
+      "--format=%s",
+    ]);
+    return stdout.trim().split("\n").filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+```
+
+---
+
+### `src/gitignore.js`
+Path: `src/gitignore.js`
+
+```javascript
+import fs from "fs";
+import path from "path";
+
+const DEFAULT_GITIGNORE = `# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+out/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs/
+*.log
+`;
+
+export function createDefaultGitignore() {
+  fs.writeFileSync(path.join(process.cwd(), ".gitignore"), DEFAULT_GITIGNORE);
+}
+```
+
+---
+
+### `src/index.js`
+Path: `src/index.js`
+
+```javascript
 #!/usr/bin/env node
 
 import { Command } from "commander";
@@ -826,7 +1271,7 @@ program
       const { protectedBranches } = loadTakorc();
       if (protectedBranches.includes(currentBranch)) {
         console.log(
-          chalk.yellow(`  ⚠ You are pushing directly to ${chalk.white(currentBranch)}.`),
+          chalk.yellow(`  ⚠ You are pushing directly to ${chalk.white(currentBranch)}.`);
         );
         console.log("");
         const { proceed } = await inquirer.prompt([
@@ -1039,3 +1484,176 @@ async function openUrl(url) {
 }
 
 program.parse();
+```
+
+---
+
+### `src/llm.js`
+Path: `src/llm.js`
+
+```javascript
+import Groq from "groq-sdk";
+import { getApiKey } from "./config.js";
+
+export async function generateCommitMessage(stat, diff) {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error("No API key found. Run tako to set up.");
+  }
+
+  const client = new Groq({ apiKey });
+
+  const maxLength = 8000;
+  const truncatedDiff =
+    diff.length > maxLength
+      ? diff.substring(0, maxLength) + "\n... (diff truncated)"
+      : diff;
+
+  const prompt = `You are a Git commit message writer.
+Based on the following git diff, write a single concise commit message.
+
+Rules:
+- One line only, max 72 characters
+- Start with a verb (Add, Fix, Update, Remove, Refactor, etc.)
+- Be specific about what changed
+- No period at the end
+- No quotes around the message
+- No markdown, no explanation, just the message
+
+Git stat:
+${stat}
+
+Git diff:
+${truncatedDiff}
+
+Reply with ONLY the commit message, nothing else.`;
+
+  const response = await client.chat.completions.create({
+    model: "llama-3.1-8b-instant",
+    max_tokens: 100,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const text = response.choices[0]?.message?.content?.trim() ?? "";
+  return text.replace(/^["'`]|["'`]$/g, "");
+}
+
+export async function generatePRDescription(branchName, commits) {
+  const apiKey = getApiKey();
+  if (!apiKey) throw new Error("No API key found. Run tako to set up.");
+
+  const client = new Groq({ apiKey });
+
+  const commitList = commits.length
+    ? commits.map((c) => `- ${c}`).join("\n")
+    : "- (no commits found)";
+
+  const prompt = `You are a developer writing a pull request description.
+Branch: ${branchName}
+Commits:
+${commitList}
+
+Write a concise PR description:
+- First line: one-sentence summary of what this branch does
+- Then 2-4 bullet points of what changed
+- Max 120 words total
+- No markdown headers, no "This PR", no fluff
+- Plain text only
+
+Reply with ONLY the description.`;
+
+  const response = await client.chat.completions.create({
+    model: "llama-3.1-8b-instant",
+    max_tokens: 300,
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  return response.choices[0]?.message?.content?.trim() ?? "";
+}
+```
+
+---
+
+### `src/setup.js`
+Path: `src/setup.js`
+
+```javascript
+import inquirer from "inquirer";
+import chalk from "chalk";
+import { hasApiKey, setApiKey, getConfigPath } from "./config.js";
+
+export async function ensureApiKey() {
+  if (hasApiKey()) return;
+
+  console.log("");
+  console.log(chalk.yellow.bold("  First time setup"));
+  console.log("");
+  console.log("  tako uses the Groq API to generate commit messages.");
+  console.log(chalk.gray("  Get a free key at: https://console.groq.com"));
+  console.log("");
+  console.log(chalk.gray("  Your key is stored at:"));
+  console.log(chalk.gray(`  ${getConfigPath()}`));
+  console.log("");
+
+  const { apiKey } = await inquirer.prompt([
+    {
+      type: "password",
+      name: "apiKey",
+      message: "Paste your Groq API key:",
+      mask: "*",
+      validate: (input) => {
+        if (!input || input.trim().length < 10)
+          return "Please enter a valid key";
+        return true;
+      },
+    },
+  ]);
+
+  setApiKey(apiKey.trim());
+
+  console.log("");
+  console.log(chalk.green("  ✓ Key saved."));
+  console.log("");
+}
+```
+
+---
+
+### `src/takorc.js`
+Path: `src/takorc.js`
+
+```javascript
+import fs from "fs";
+import path from "path";
+
+const DEFAULTS = {
+  defaultBranch: "main",
+  protectedBranches: ["main", "master", "production", "prod"],
+  commitStyle: "default",
+  prBase: "main",
+};
+
+/**
+ * Reads .takorc from process.cwd().
+ * Returns merged defaults + user config.
+ * Never throws — if file is missing or invalid, returns defaults.
+ */
+export function loadTakorc() {
+  const rcPath = path.join(process.cwd(), ".takorc");
+  if (!fs.existsSync(rcPath)) return { ...DEFAULTS };
+  try {
+    const raw = fs.readFileSync(rcPath, "utf8");
+    return { ...DEFAULTS, ...JSON.parse(raw) };
+  } catch {
+    return { ...DEFAULTS };
+  }
+}
+
+/**
+ * Writes config object to .takorc in process.cwd().
+ */
+export function saveTakorc(config) {
+  const rcPath = path.join(process.cwd(), ".takorc");
+  fs.writeFileSync(rcPath, JSON.stringify(config, null, 2));
+}
+```
