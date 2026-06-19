@@ -826,7 +826,7 @@ program
       const { protectedBranches } = loadTakorc();
       if (protectedBranches.includes(currentBranch)) {
         console.log(
-          chalk.yellow(`  ⚠ You are pushing directly to ${chalk.white(currentBranch)}.`),
+          chalk.yellow(`  ⚠ You are pushing directly to ${chalk.white(currentBranch)}.`)
         );
         console.log("");
         const { proceed } = await inquirer.prompt([
